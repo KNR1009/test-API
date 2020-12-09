@@ -5,6 +5,8 @@ const app = express()
 // sqliteを利用できるように設定する
 const sqlite3 = require('sqlite3')
 const dbPath = "app/db/database.sqlite3"
+
+// HTMLのinputを受け取る
 const bodyParser = require('body-parser');
 
 // publicディレクトリを静的ファイル群のルートディレクトリとして設定
@@ -36,6 +38,68 @@ app.get('/api/v1/users/:id', (req, res)=>{
   db.close()
 })
 
+  // DBリクエストを実行するための関数を作成
+    const run = async(sql, db, res, message) => {
+      return new Promise ((resolve, reject) => {
+        db.run(sql, (err) => {
+          if(err){
+            res.status(500).send(err);
+            return reject();
+          }else{
+            res.json({message: message})
+            return resolve
+          }
+        })
+      })
+    }
+
+ 
+
+// 値を更新するメソットを作成
+app.put('/api/v1/users/:id', async (req, res) => {
+    // Connect database
+    const db = new sqlite3.Database(dbPath)
+
+    // idの取得
+    const id = req.params.id
+
+    // 既存データを取得し変数に格納する
+     db.get(`SELECT * FROM users WHERE id=${id}`,  (err, rows)=>{
+        const name = req.body.name ? req.body.name : rows.name
+        const profile = req.body.profile ? req.body.profile : rows.profile
+        const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : rows.date_of_birth
+     }) 
+    const name = req.body.name
+    const profile = req.body.profile ? req.body.profile : ""
+    const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
+
+    await run(
+        `UPDATE users SET name="${name}", profile="${profile}", date_of_birth="${dateOfBirth}" WHERE id=${id}`,
+        db,
+        res,
+        'ユーザー情報を更新しました'
+      )
+    db.close()
+})
+
+// 削除用のAPIの作成
+app.delete('/api/v1/users/:id', async (req, res) => {
+    // Connect database
+    const db = new sqlite3.Database(dbPath)
+
+    // idの取得
+    const id = req.params.id
+
+    await run(
+        `DELETE FROM users WHERE id=${id}`,
+        db,
+        res,
+        'ユーザー情報を削除しました'
+      )
+    db.close()
+})
+
+
 
 // Search users matching keyword
 app.get('/api/v1/search', (req, res) => {
@@ -52,27 +116,15 @@ app.get('/api/v1/search', (req, res) => {
 app.post('/api/v1/users', async (req, res) => {
   // Connect database
     const db = new sqlite3.Database(dbPath)
-
     const name = req.body.name
     const profile = req.body.profile ? req.body.profile : ""
     const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
 
-    const run = async(sql) => {
-      return new Promise ((resolve, reject) => {
-        db.run(sql, (err) => {
-          if(err){
-            res.status(500).send(err);
-            return reject();
-          }else{
-            res.json({message: '新規登録成功しました'})
-            return resolve
-          }
-        })
-      })
-    }
-    
     await run(
-        `INSERT INTO users (name, profile, date_of_birth) VALUES ("${name}", "${profile}", "${dateOfBirth}")`
+        `INSERT INTO users (name, profile, date_of_birth) VALUES ("${name}", "${profile}", "${dateOfBirth}")`,
+        db,
+        res,
+        '新規登録に成功しました'
       )
     db.close()
 })
