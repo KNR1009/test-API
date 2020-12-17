@@ -26,8 +26,8 @@ const indexModule = (()=>{
         return usersModule.saveUser(uid)
       })
 
-      document.getElementById('cancel-btn').addEventListener('click', ()=>{
-        return window.location.href = '/'
+      document.getElementById('delete-btn').addEventListener('click', ()=>{
+        return usersModule.deleteUsers(uid)
       })
 
       return usersModule.setExitstringValue(uid);
