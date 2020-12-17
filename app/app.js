@@ -15,6 +15,7 @@ app.use(express.static(path.join(__dirname, 'public')))
 
 // リクエストのbodyを読み取る設定
 app.use(bodyParser.urlencoded({extended: true}))
+// jsonで読み取れるようにしている
 app.use(bodyParser.json())
 
 
@@ -38,9 +39,21 @@ app.get('/api/v1/users/:id', (req, res)=>{
   db.close()
 })
 
+// Search users matching keyword
+app.get('/api/v1/search', (req, res) => {
+  // Connect database
+  const db = new sqlite3.Database(dbPath)
+  const keyword = req.query.q
+  db.all(`SELECT * FROM users WHERE name LIKE "%${keyword}%"`, (err, rows) => {
+    res.json(rows)
+  })
+  db.close()
+})
+
   // DBリクエストを実行するための関数を作成
     const run = async(sql, db, res, message) => {
       return new Promise ((resolve, reject) => {
+        // SQLクエリを実行するようなsqlite3のメソット
         db.run(sql, (err) => {
           if(err){
             res.status(500).send(err);
@@ -53,6 +66,22 @@ app.get('/api/v1/users/:id', (req, res)=>{
       })
     }
 
+// Create a new user
+app.post('/api/v1/users', async (req, res) => {
+  // Connect database
+    const db = new sqlite3.Database(dbPath)
+    const name = req.body.name
+    const profile = req.body.profile ? req.body.profile : ""
+    const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
+
+    await run(
+        `INSERT INTO users (name, profile, date_of_birth) VALUES ("${name}", "${profile}", "${dateOfBirth}")`,
+        db,
+        res,
+        '新規登録に成功しました'
+      )
+    db.close()
+})
  
 
 // 値を更新するメソットを作成
@@ -100,34 +129,6 @@ app.delete('/api/v1/users/:id', async (req, res) => {
 })
 
 
-
-// Search users matching keyword
-app.get('/api/v1/search', (req, res) => {
-  // Connect database
-  const db = new sqlite3.Database(dbPath)
-  const keyword = req.query.q
-  db.all(`SELECT * FROM users WHERE name LIKE "%${keyword}%"`, (err, rows) => {
-    res.json(rows)
-  })
-  db.close()
-})
-
-// Create a new user
-app.post('/api/v1/users', async (req, res) => {
-  // Connect database
-    const db = new sqlite3.Database(dbPath)
-    const name = req.body.name
-    const profile = req.body.profile ? req.body.profile : ""
-    const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
-
-    await run(
-        `INSERT INTO users (name, profile, date_of_birth) VALUES ("${name}", "${profile}", "${dateOfBirth}")`,
-        db,
-        res,
-        '新規登録に成功しました'
-      )
-    db.close()
-})
   
 
 
