@@ -34,7 +34,11 @@ app.get('/api/v1/users/:id', (req, res)=>{
   const db = new sqlite3.Database(dbPath);
   const id = req.params.id
   db.get(`SELECT * FROM users WHERE id=${id}`, (err, rows)=>{
-    res.json(rows)
+    if(!rows){
+      res.status(404).send({errror: 'Not Found'})
+    }else{
+      res.status(200).send(res.json(rows))
+    }
   })
   db.close()
 })
@@ -51,16 +55,15 @@ app.get('/api/v1/search', (req, res) => {
 })
 
   // DBリクエストを実行するための関数を作成
-    const run = async(sql, db, res, message) => {
+    const run = async(sql, db) => {
       return new Promise ((resolve, reject) => {
         // SQLクエリを実行するようなsqlite3のメソット
         db.run(sql, (err) => {
           if(err){
-            res.status(500).send(err);
-            return reject();
+            // 以下の文でtry&catch構文で後者に回る
+            return reject(err);
           }else{
-            res.json({message: message})
-            return resolve
+            return resolve();
           }
         })
       })
@@ -68,64 +71,90 @@ app.get('/api/v1/search', (req, res) => {
 
 // Create a new user
 app.post('/api/v1/users', async (req, res) => {
-  // Connect database
+  // エラー処理
+  if(req.body.name === ""){
+    // ユーザー名が入力されていなかっt場合
+    res.status(400).send({error: "ユーザー名が空です"})
+  }else{
+      // Connect database
     const db = new sqlite3.Database(dbPath)
     const name = req.body.name
     const profile = req.body.profile ? req.body.profile : ""
     const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
 
-    await run(
+    try {
+      // 処理がサーバがで受理された場合
+      await run(
         `INSERT INTO users (name, profile, date_of_birth) VALUES ("${name}", "${profile}", "${dateOfBirth}")`,
-        db,
-        res,
-        '新規登録に成功しました'
+        db
       )
+      res.status(201).send({message: '新規登録に成功しました'})
+    } catch (error) {
+      res.status(500).send({error})
+    }
     db.close()
+  }
 })
  
 
 // 値を更新するメソットを作成
 app.put('/api/v1/users/:id', async (req, res) => {
+  if (!req.body.name || req.body.name === "") {
+    res.status(400).send({error: "ユーザー名が指定されていません。"})
+  } else {
     // Connect database
     const db = new sqlite3.Database(dbPath)
-
-    // idの取得
     const id = req.params.id
 
-    // 既存データを取得し変数に格納する
-     db.get(`SELECT * FROM users WHERE id=${id}`,  (err, rows)=>{
-        const name = req.body.name ? req.body.name : rows.name
-        const profile = req.body.profile ? req.body.profile : rows.profile
-        const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : rows.date_of_birth
-     }) 
-    const name = req.body.name
-    const profile = req.body.profile ? req.body.profile : ""
-    const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : ""
+    // 現在のユーザー情報を取得する
+    db.get(`SELECT * FROM users WHERE id=${id}`, async (err, row) => {
 
-    await run(
-        `UPDATE users SET name="${name}", profile="${profile}", date_of_birth="${dateOfBirth}" WHERE id=${id}`,
-        db,
-        res,
-        'ユーザー情報を更新しました'
-      )
+      if (!row) {
+        res.status(404).send({error: "指定されたユーザーが見つかりません。"})
+      } else {
+        const name = req.body.name ? req.body.name : row.name
+        const profile = req.body.profile ? req.body.profile : row.profile
+        const dateOfBirth = req.body.date_of_birth ? req.body.date_of_birth : row.date_of_birth
+
+        try {
+          await run(
+            `UPDATE users SET name="${name}", profile="${profile}", date_of_birth="${dateOfBirth}" WHERE id=${id}`,
+            db
+          )
+          res.status(200).send({message: "ユーザー情報を更新しました。"})
+        } catch (e) {
+          res.status(500).send({error: e})
+        }
+      }
+    })
+
     db.close()
+  }
 })
 
 // 削除用のAPIの作成
 app.delete('/api/v1/users/:id', async (req, res) => {
-    // Connect database
+     // Connect database
     const db = new sqlite3.Database(dbPath)
-
     // idの取得
     const id = req.params.id
 
-    await run(
-        `DELETE FROM users WHERE id=${id}`,
-        db,
-        res,
-        'ユーザー情報を削除しました'
-      )
-    db.close()
+    db.get(`SELECT * FROM users WHERE id=${id}`, async (err, row) => {
+        if (!row) {
+          res.status(404).send({error: "指定されたユーザーが見つかりません。"})
+        } else {
+          try {
+            await run(
+                `DELETE FROM users WHERE id=${id}`,
+                db,
+                )
+            res.status(200).send({message: "ユーザーを削除しました"})
+          } catch (e) {
+            res.status(500).send({error: e})
+          }
+        }
+        db.close()
+      })
 })
 
 

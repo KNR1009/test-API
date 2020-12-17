@@ -66,26 +66,27 @@ const usersModule = (()=>{
     },
 
     // ユーザー情報を更新するAPIを叩く
-      saveUser: async (uid) => {
-      const name = document.getElementById("name").value
-      const profile = document.getElementById("profile").value
-      const dateOfBirth = document.getElementById("date-of-birth").value
+    saveUser: async (uid) => {
+    const name = document.getElementById("name").value
+    const profile = document.getElementById("profile").value
+    const dateOfBirth = document.getElementById("date-of-birth").value
 
-      // リクエストのbody
-      const body = {
-        name: name,
-        profile: profile,
-        date_of_birth: dateOfBirth
-      }
+    // リクエストのbody
+    const body = {
+      name: name,
+      profile: profile,
+      date_of_birth: dateOfBirth
+    }
 
-      const res = await fetch(BASE_URL + "/" + uid, {
-        method: "PUT",
-        headers: headers,
-        body: JSON.stringify(body)
-      })
+    const res = await fetch(BASE_URL + "/" + uid, {
+      method: "PUT",
+      headers: headers,
+      // 以下でjsの文字列をJSON型式に変更する
+      body: JSON.stringify(body)
+    })
 
-       window.location.href = "/"
-    },
+      window.location.href = "/"
+  },
 
     // ユーザー情報を削除するメソット
     deleteUsers:async(uid)=>{
